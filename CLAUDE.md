@@ -118,7 +118,7 @@ webview-ui/                          React 19 + Canvas UI (depends only on core/
       introTourState.ts              Intro tour wire-state machine (pure reducer, Node-runner tested)
       useIntroTour.ts                Wires the reducer to React + transport (snapshot, verdict, choices)
       useTerminalDrawer.ts           Terminal-pane model for both shells: active/shown pane, socket status, card lookups
-      useIsMobile.ts                 Mobile breakpoint — always false in the VS Code webview
+      useIsMobile.ts                 Mobile breakpoint — always false in the VS Code webview or under __PIXEL_AGENTS_FORCE_DESKTOP
       useKeyboardViewport.ts         Samples the viewport: keyboard open (key bar) + iOS shell clamp height
     office/
       types.ts                       OfficeLayout, Character, etc. + re-exports constants
