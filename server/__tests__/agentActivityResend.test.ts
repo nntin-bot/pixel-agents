@@ -18,7 +18,7 @@ function createTestAgent(overrides: Partial<AgentState> = {}): AgentState {
     activeToolNames: new Map(),
     activeSubagentToolIds: new Map(),
     activeSubagentToolNames: new Map(),
-    backgroundAgentToolIds: new Set(),
+    backgroundSpawns: new Map(),
     isWaiting: false,
     permissionSent: false,
     hadToolsInTurn: false,
@@ -101,7 +101,11 @@ describe('resendAgentActivity', () => {
           ['bg-named', 'Agent'],
           ['bg-promoted', 'Agent'],
         ]),
-        backgroundAgentToolIds: new Set(['bg-unnamed', 'bg-named', 'bg-promoted']),
+        backgroundSpawns: new Map([
+          ['bg-unnamed', {}],
+          ['bg-named', {}],
+          ['bg-promoted', {}],
+        ]),
         teammateSpawnToolIds: new Set(['bg-named']),
       }),
     );
@@ -205,6 +209,24 @@ describe('resendAgentActivity', () => {
     sent = [];
     resendAgentActivity((msg) => sent.push(msg), store);
     expect(sent).toHaveLength(0);
+  });
+
+  it('re-sends a reported 0 (a cleared session): a real reading, not "none yet"', () => {
+    const store = new AgentStateStore();
+    store.set(
+      1,
+      createTestAgent({
+        id: 1,
+        contextTokens: 0,
+        maxContextTokens: 200_000,
+        contextReported: true,
+      }),
+    );
+    const sent: Array<Record<string, unknown>> = [];
+    resendAgentActivity((msg) => sent.push(msg), store);
+    expect(sent).toEqual([
+      { type: 'agentContextUsage', id: 1, contextTokens: 0, maxContextTokens: 200_000 },
+    ]);
   });
 
   it('handles edge cases: empty store and multiple agents', () => {

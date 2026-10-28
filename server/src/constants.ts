@@ -70,6 +70,7 @@ export {
   SERVER_JSON_DIR,
   SERVER_JSON_NAME,
   TASK_DESCRIPTION_DISPLAY_MAX_LENGTH,
+  USAGE_API_PREFIX,
 } from '../../core/src/constants.js';
 
 // ── Multi-Server Discovery ──────────────────────────────────
@@ -129,6 +130,13 @@ export const WILDCARD_HOSTNAMES = ['0.0.0.0', '::'] as const;
  *  browser's TERMINAL_SCROLLBACK_LINES so a reattach replays the same depth the
  *  client would have kept. Bounds the serialized replay snapshot. */
 export const TERMINAL_MIRROR_SCROLLBACK_LINES = 5_000;
+/** The DEC private modes that pick a mouse encoding, by xterm's encoding
+ *  name. The serialize addon restores mouse tracking but not its encoding,
+ *  so a replay appends this (the default X10 encoding needs none). */
+export const TERMINAL_MOUSE_ENCODING_MODES: Readonly<Record<string, string>> = {
+  SGR: '\x1b[?1006h',
+  SGR_PIXELS: '\x1b[?1016h',
+};
 /** Terminal size used until the browser reports its real geometry. */
 export const TERMINAL_DEFAULT_COLS = 80;
 export const TERMINAL_DEFAULT_ROWS = 24;
@@ -138,6 +146,18 @@ export const TERMINAL_TERM_NAME = 'xterm-256color';
 export const TERMINAL_KILL_GRACE_MS = 2_000;
 /** How long shutdown waits past the SIGKILL escalation for the exits to land. */
 export const TERMINAL_SHUTDOWN_SLACK_MS = 1_000;
+
+// ── PTY host (development only: `pixel-agents --pty-host`) ──
+/** The host exits after this long with no terminal and no server connected. */
+export const PTY_HOST_IDLE_EXIT_MS = 60_000;
+/** How long a server waits for a host it just started to accept connections. */
+export const PTY_HOST_START_TIMEOUT_MS = 5_000;
+/** Between connection attempts while waiting for a host to come up. */
+export const PTY_HOST_CONNECT_RETRY_MS = 100;
+/** A request the host never answers (a replay) gives up after this long. */
+export const PTY_HOST_REQUEST_TIMEOUT_MS = 5_000;
+/** The host's bundle, next to dist/cli.js. Not in the npm package: dev only. */
+export const PTY_HOST_SCRIPT = 'pty-host.js';
 /** unavailableReason() when the operator opted out with --no-terminal. Shown
  *  verbatim as the disabled + Agent button's tooltip in the browser. */
 export const TERMINAL_DISABLED_BY_FLAG_REASON = 'Terminal disabled with --no-terminal.';
@@ -157,20 +177,45 @@ export const DIRECTORY_WRITE_FAILED_REASON =
  *  embedded (VS Code) server still mints a fresh token per process. */
 export const STANDALONE_TOKEN_FILE_NAME = 'standalone-token';
 
-// ── Layout/Config Persistence ──────────────────────────────
-export const LAYOUT_FILE_DIR = '.pixel-agents';
+// ── ~/.pixel-agents Persistence ────────────────────────────
+export const PIXEL_AGENTS_DIR = '.pixel-agents';
 export const LAYOUT_FILE_NAME = 'layout.json';
-export const LAYOUT_FILE_POLL_INTERVAL_MS = 2000;
+export const JSON_FILE_POLL_INTERVAL_MS = 2000;
 export const LAYOUT_REVISION_KEY = 'layoutRevision';
 export const CONFIG_FILE_NAME = 'config.json';
 
+// ── Usage bars (plan rate limits) ───────────────────────────
+/** The last usage report per provider, in the persistence dir (shared by both surfaces). */
+export const USAGE_LIMITS_FILE_NAME = 'usage-limits.json';
+/** An unchanged usage report is still passed on (and saved) once this old, so
+ *  the office's "updated N min ago" stays true while a session is open. */
+export const USAGE_UNCHANGED_REFRESH_MS = 60_000;
+
 // ── Avatar Customization ────────────────────────────────────
-/** Number of pre-colored bundled character palettes (char_0.png–char_5.png).
- *  Mirrors `PALETTE_COUNT` in webview-ui/src/constants.ts; kept separate
- *  because the server has no DOM/sprite access and cannot import the webview
- *  constant. The two values must stay in sync. */
-export const PALETTE_COUNT = 6;
-/** Inclusive upper bound for a valid agent hue shift, in degrees. Used by
+/** The character profiles agents are drawn from, in the persistence dir (shared by both surfaces). */
+export const CHARACTER_PROFILES_FILE_NAME = 'characters.json';
+/** The custom wardrobe items saved from the pixel editor, beside characters.json. */
+export const WARDROBE_ITEMS_FILE_NAME = 'wardrobe-items.json';
+/** Inclusive upper bound for a valid agent repeat (which copy of its character
+ *  it is; there are never nearly this many agents in an office). Used by
  *  clientMessageHandler to guard saveAgentSeats payloads from a remote or
  *  hand-edited source corrupting the stored values with out-of-range values. */
-export const HUE_SHIFT_MAX_DEG = 360;
+export const MAX_CHARACTER_REPEAT = 1_000;
+
+// ── Recent conversations (the sidebar) ──────────────────────
+/** What each conversation's agent wore and where it sat, in the persistence dir. */
+export const CONVERSATIONS_FILE_NAME = 'conversations.json';
+/** Most conversations whose look is remembered (the newest are kept). */
+export const CONVERSATION_LOOKS_MAX = 500;
+/** Conversations the sidebar lists per Directory, newest first. */
+export const CONVERSATIONS_PER_DIRECTORY = 5;
+/** Bytes read from each end of a transcript looking for its title. */
+export const CONVERSATION_TITLE_SCAN_BYTES = 256 * 1024;
+/** A title longer than this is cut, with an ellipsis. */
+export const CONVERSATION_TITLE_MAX_CHARS = 120;
+/** A running conversation the coding agent hasn't titled yet. */
+export const NEW_CONVERSATION_TITLE = 'New conversation';
+
+/** Most agent ids a saved card order keeps. The order is pruned to live agents
+ *  on every save, so this only bounds a hand-edited or hostile payload. */
+export const MAX_CARD_ORDER_LENGTH = 1_000;

@@ -8,18 +8,24 @@ import {
   ZOOM_MIN,
 } from '../constants.js';
 import { Button } from './ui/Button.js';
+import { PixelIcon } from './ui/PixelIcon.js';
+import { PixelText } from './ui/PixelText.js';
 
 interface ZoomControlsProps {
   zoom: number;
   onZoomChange: (zoom: number) => void;
+  /** The conversation sidebar's toggle, above the zoom buttons (only where there is a sidebar). */
+  sidebar?: { open: boolean; onToggle: () => void };
 }
 
-export function ZoomControls({ zoom, onZoomChange }: ZoomControlsProps) {
+export function ZoomControls({ zoom, onZoomChange, sidebar }: ZoomControlsProps) {
   const [showLevel, setShowLevel] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevZoomRef = useRef(zoom);
+  // Bumped per toggle: remounts the icon so its pop plays (never on first paint).
+  const [toggles, setToggles] = useState(0);
 
   const minDisabled = zoom <= ZOOM_MIN;
   const maxDisabled = zoom >= ZOOM_MAX;
@@ -64,12 +70,29 @@ export function ZoomControls({ zoom, onZoomChange }: ZoomControlsProps) {
             transition: `opacity ${ZOOM_LEVEL_FADE_DURATION_SEC}s ease-out`,
           }}
         >
-          {zoom}x
+          <PixelText text={`${zoom}x`} scale={3} />
         </div>
       )}
 
       {/* Vertically stacked round buttons — top-left */}
       <div className="absolute top-8 left-8 z-10 flex flex-col gap-4">
+        {sidebar && (
+          <Button
+            size="icon_lg"
+            variant={sidebar.open ? 'active' : 'default'}
+            onClick={() => {
+              setToggles((n) => n + 1);
+              sidebar.onToggle();
+            }}
+            aria-pressed={sidebar.open}
+            className="border-border! shadow-pixel mb-4"
+            title={sidebar.open ? 'Hide conversations' : 'Show conversations'}
+          >
+            <span key={toggles} className={`flex ${toggles > 0 ? 'pixel-pop' : ''}`}>
+              <PixelIcon name={sidebar.open ? 'sidebar' : 'sidebarShut'} />
+            </span>
+          </Button>
+        )}
         <Button
           size="icon_lg"
           onClick={() => onZoomChange(zoom + 1)}
@@ -77,26 +100,7 @@ export function ZoomControls({ zoom, onZoomChange }: ZoomControlsProps) {
           className="border-border! shadow-pixel disabled:hover:bg-btn-bg disabled:cursor-default disabled:opacity-(--btn-disabled-opacity)"
           title="Zoom in (Ctrl+Scroll)"
         >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <line
-              x1="9"
-              y1="3"
-              x2="9"
-              y2="15"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-            <line
-              x1="3"
-              y1="9"
-              x2="15"
-              y2="9"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
+          <PixelIcon name="zoomIn" />
         </Button>
         <Button
           size="icon_lg"
@@ -105,17 +109,7 @@ export function ZoomControls({ zoom, onZoomChange }: ZoomControlsProps) {
           className="border-border! shadow-pixel disabled:hover:bg-btn-bg disabled:cursor-default disabled:opacity-(--btn-disabled-opacity)"
           title="Zoom out (Ctrl+Scroll)"
         >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <line
-              x1="3"
-              y1="9"
-              x2="15"
-              y2="9"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
+          <PixelIcon name="zoomOut" />
         </Button>
       </div>
     </>

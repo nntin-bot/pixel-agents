@@ -104,6 +104,43 @@ describe('launchStandaloneAgent', () => {
 
   // ── Successful launch ────────────────────────────────────────
 
+  it('resumes a past session: same id, --resume, its transcript read from the end, its old seat asked for', () => {
+    const harness = workingPtyManager();
+    const sessionId = '0b8a701c-400d-41ea-801f-40de5e070a8d';
+    const transcript = path.join(projectDir, `${sessionId}.jsonl`);
+    fs.writeFileSync(transcript, '{"type":"user"}\n{"type":"assistant"}\n');
+
+    const id = launch(harness, {
+      directoryPath: tempDir,
+      palette: 3,
+      resume: { sessionId, transcript, seatId: 'chair-7' },
+    });
+
+    const agent = store.get(id!);
+    expect(agent?.sessionId).toBe(sessionId);
+    expect(agent?.jsonlFile).toBe(transcript);
+    expect(agent?.fileOffset).toBe(fs.statSync(transcript).size);
+    expect(agent?.seatId).toBe('chair-7');
+    expect(agent?.palette).toBe(3);
+    expect(harness.spawnArgs[0].args).toEqual(['--resume', sessionId]);
+  });
+
+  it('a fresh launch reports an empty context (a full gauge) at once; a resume does not', () => {
+    const harness = workingPtyManager();
+    const id = launch(harness, { directoryPath: tempDir });
+    expect(broadcasts).toContainEqual(
+      expect.objectContaining({ type: 'agentContextUsage', id, contextTokens: 0 }),
+    );
+    expect(store.get(id!)?.contextReported).toBe(true);
+
+    broadcasts.length = 0;
+    const sessionId = '0b8a701c-400d-41ea-801f-40de5e070a8d';
+    const transcript = path.join(projectDir, `${sessionId}.jsonl`);
+    fs.writeFileSync(transcript, '{"type":"user"}\n');
+    launch(harness, { directoryPath: tempDir, resume: { sessionId, transcript } });
+    expect(broadcasts.some((m) => m.type === 'agentContextUsage')).toBe(false);
+  });
+
   it('spawns the provider launch command in a PTY and registers the agent', () => {
     const harness = workingPtyManager();
     const cwd = path.join(tempDir, 'workspace');
@@ -122,7 +159,7 @@ describe('launchStandaloneAgent', () => {
     // agentCreated broadcast carries it and a reload restores the same look
     // without the webview having to persist a client-side pick.
     expect(agent?.palette).toBeTypeOf('number');
-    expect(agent?.hueShift).toBeTypeOf('number');
+    expect(agent?.repeat).toBeTypeOf('number');
 
     // The real claude launch command, spawned in the requested cwd.
 
@@ -138,6 +175,26 @@ describe('launchStandaloneAgent', () => {
 
     // The UI learns a terminal exists so the drawer opens a tab.
     expect(broadcasts).toContainEqual({ type: 'terminalSessionOpened', agentId: 1 });
+  });
+
+  it('wears the character picked from the roster even when it is taken, the copy in red clothes', () => {
+    const harness = workingPtyManager();
+
+    launch(harness, { palette: 2 });
+    launch(harness, { palette: 2 });
+
+    expect(store.get(1)).toMatchObject({ palette: 2, repeat: 0 });
+    expect(store.get(2)).toMatchObject({ palette: 2, repeat: 1 });
+  });
+
+  it('ignores a picked character that is not in the roster', () => {
+    const harness = workingPtyManager();
+
+    launch(harness, { palette: 999 });
+
+    const palette = store.get(1)?.palette;
+    expect(palette).toBeTypeOf('number');
+    expect(palette).not.toBe(999);
   });
 
   it('passes bypassPermissions through to the launch command', () => {
